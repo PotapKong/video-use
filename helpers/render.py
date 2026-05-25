@@ -315,7 +315,16 @@ def concat_segments(segment_paths: list[Path], out_path: Path, edit_dir: Path) -
     """Lossless concat via the concat demuxer. No re-encode."""
     out_path.parent.mkdir(parents=True, exist_ok=True)
     concat_list = edit_dir / "_concat.txt"
-    concat_list.write_text("".join(f"file '{p.resolve()}'\n" for p in segment_paths))
+    edit_root = edit_dir.resolve()
+    entries: list[str] = []
+    for p in segment_paths:
+        resolved = p.resolve()
+        try:
+            entry = resolved.relative_to(edit_root).as_posix()
+        except ValueError:
+            entry = resolved.as_posix()
+        entries.append(f"file '{entry}'\n")
+    concat_list.write_text("".join(entries), encoding="utf-8")
 
     cmd = [
         "ffmpeg", "-y",

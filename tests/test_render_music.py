@@ -14,6 +14,31 @@ spec.loader.exec_module(render)
 
 
 class RenderMusicTests(unittest.TestCase):
+    def test_concat_list_uses_paths_relative_to_edit_dir(self) -> None:
+        captured_list = ""
+
+        def fake_run_quiet(cmd: list[str]) -> None:
+            nonlocal captured_list
+            list_path = Path(cmd[cmd.index("-i") + 1])
+            captured_list = list_path.read_text(encoding="utf-8")
+
+        old_run_quiet = getattr(render, "run_quiet")
+        try:
+            setattr(render, "run_quiet", fake_run_quiet)
+            with tempfile.TemporaryDirectory() as tmp:
+                edit_dir = Path(tmp) / "кириллица"
+                segment = edit_dir / "clips_graded" / "seg_00_REEL.mp4"
+                segment.parent.mkdir(parents=True)
+                segment.touch()
+
+                render.concat_segments([segment], edit_dir / "base.mp4", edit_dir)
+
+        finally:
+            setattr(render, "run_quiet", old_run_quiet)
+
+        self.assertIn("file 'clips_graded/seg_00_REEL.mp4'", captured_list)
+        self.assertNotIn(str(edit_dir), captured_list)
+
     def test_music_only_input_does_not_reference_missing_voice_audio(self) -> None:
         captured: list[str] = []
 
